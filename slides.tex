@@ -62,51 +62,53 @@
 \begin{frame}{About Me}
   IU CS Graduate\\
   Hunger Prevention Manager\\
-  CTO Whiteboard Dynamics LLC\\
-  \href{https://whiteboarddynamics.co}{(whiteboarddynamics.co)}\\
-  \href{https://ambientmemory.com}{ambientmemory.com}\\
+  \\
+  My "site": \href{https://ambientmemory.com}{ambientmemory.com}\\
   GitHub: \href{https://github.com/gavwhela}{@gavwhela}\\
+  \\
+  CTO Whiteboard Dynamics LLC\\
+  Company site: \href{https://whiteboarddynamics.co}{whiteboarddynamics.co}\\
 \end{frame}
 
-\section{About the workshop}
-\subsection{Attributions}
 \begin{frame}{Attributions}
   This presentation uses resources from the Yesod Book.\\
   \url{https://github.com/yesodweb/yesodweb.com-content}\\
   \url{http://www.yesodweb.com/book}\\
+  \\
+  As well as the yesod-postgres template.\\
+  \href{https://github.com/commercialhaskell/stack-templates/blob/master/LICENSE}{MIT License}\\
 \end{frame}
 
-\subsection{Layout}
-\begin{frame}{Layout}
-  \begin{itemize}
-  \item<1-> Basic background
-  \item<2-> Set up Codio \& Dive into an exercise
-  \item<3-> Routing \& Templating intro
-  \item<4-> Start building on the scaffolding
-  \item<5-> Sessions
-  \item<6> Lunch
-  \end{itemize}
-\end{frame}
+%% \begin{frame}{Layout}
+%%   \begin{itemize}
+%%   \item<1-> Basic background
+%%   \item<2-> Set up Codio \& Dive into an exercise
+%%   \item<3-> Routing \& Templating intro
+%%   \item<4-> Start building on the scaffolding
+%%   \item<5-> Sessions
+%%   \item<6> Lunch
+%%   \end{itemize}
+%% \end{frame}
+%% 
+%% \begin{frame}{Layout}
+%%   \begin{itemize}
+%%   \item<1-> Lunch
+%%   \item<2-> Starting the blog
+%%   \item<3-> Database Storage
+%%   \item<4-> Authentication and Authorization
+%%   \item<5-> Snack
+%%   \end{itemize}
+%% \end{frame}
+%% 
+%% \begin{frame}{Layout}
+%%   \begin{itemize}
+%%   \item<1-> Snack
+%%   \item<2-> Esqueleto
+%%   \item<2> Finishing up
+%%   \end{itemize}
+%% \end{frame}
 
-\begin{frame}{Layout}
-  \begin{itemize}
-  \item<1-> Lunch
-  \item<2-> Starting the blog
-  \item<3-> Database Storage
-  \item<4-> Authentication and Authorization
-  \item<5-> Snack
-  \end{itemize}
-\end{frame}
-
-\begin{frame}{Layout}
-  \begin{itemize}
-  \item<1-> Snack
-  \item<2-> Esqueleto
-  \item<2> Finishing up
-  \end{itemize}
-\end{frame}
-
-\section{The Basics}
+\section{Basic Background}
 
 \subsection{Language Extensions}
 \begin{frame}[fragile]{Overloaded Strings}
@@ -213,6 +215,15 @@
   \includegraphics[width=\textwidth,height=0.8\textheight,keepaspectratio]{example}
 \end{frame}
 
+%%%%%%%% Maybe put something about setTitle here or something
+
+\section{Set up Codio \& Dive into an exercise}
+
+\subsection{Codio}
+\begin{frame}{Setting up Codio}
+
+\end{frame}
+
 \subsection{First Exercise}
 \begin{frame}[fragile]{First Exercise}
   \begin{minted}{haskell}
@@ -237,6 +248,10 @@
     main = warp 3000 Links
   \end{minted}
 \end{frame}
+
+%% ~25 minutes in I think
+
+\subsection{What did we do?}
 
 \begin{frame}[fragile]{Foundation Datatype}
   Remember these lines?
@@ -273,6 +288,7 @@
   \end{minted}
 \end{frame}
 
+\section{Routing \& Templating intro}
 \subsection{Routing DSL}
 \begin{frame}[fragile]{Routing DSL}
   Declares the routing of paths to handlers or subsites. Specifies
@@ -429,7 +445,9 @@
   \end{center}
 \end{frame}
 
-\section{Widgets}
+\section{Start building on the scaffolding}
+
+\subsection{Widgets}
 \begin{frame}{Widgets}
   Yesod's solution to modular and composable web elements. \\
   Each widget has these components:\\
@@ -461,6 +479,7 @@
   \end{minted}
 \end{frame}
 
+\subsection{Scaffolding Structure}
 \begin{frame}{Site Scaffolding}
   \dirtree{%
     .1 Project/.
@@ -514,6 +533,100 @@
 %%    .2 Settings.hs.
 %%    .2 stack.yaml.
 %%  }
+
+\subsection{Sessions}
+
+\begin{frame}{Sessions}
+  A session is a way to keep state about an interaction with a
+  client. This is generally something that is desired to be minimized,
+  but is fairly often unavoidable, such as a shopping cart
+  implementation. \\
+
+  Sessions stored on the server are available, but not the default due
+  to the additional overhead of doing additional database lookups to
+  service requests. \\
+
+  Instead the approach usually used by Yesod is to store the session
+  in a cookie on the client. This cookie is encrypted to prevent
+  inspection and signed to prevent tampering.
+\end{frame}
+
+\begin{frame}[fragile]{Sessions}
+  The client session is actually enabled in the default sessionBackend
+  implementation, but the scaffolding we are using overrides it to
+  change the location of the file that stores the encryption key for
+  the cookies. \\
+
+  \begin{minted}[frame=single]{haskell}
+    -- Store session data on the client in encrypted cookies,
+    -- default session idle timeout is 120 minutes
+    makeSessionBackend _ = Just <$> defaultClientSessionBackend
+        120    -- timeout in minutes
+        "config/client_session_key.aes"
+  \end{minted}
+\end{frame}
+
+\begin{frame}[fragile]{Sessions}
+  Sessions in Yesod are modeled as a basic key value store. \\
+
+  \begin{minted}[frame=single]{haskell}
+    type SessionMap = Map Text ByteString
+    lookupSession :: MonadHandler m => Text -> m (Maybe Text)
+    lookupSessionBS :: MonadHandler m => Text -> m (Maybe ByteString)
+    getSession :: MonadHandler m => m SessionMap
+    setSession :: MonadHandler m => Text -> Text -> m ()
+    setSessionBS :: MonadHandler m => Text -> ByteString -> m ()
+    deleteSession :: MonadHandler m => Text -> m ()
+    clearSession :: MonadHandler m => m ()
+  \end{minted}
+\end{frame}
+
+\begin{frame}{Messages}
+  One major use of sessions is messages. These solve a common case:
+  the user performs a POST request, the web app takes the required
+  action, and then wants to simultaneously redirect the user to a new
+  page and display a message indicating the result of the
+  action. (This is known as Post/Redirect/Get). \\
+
+  Yesod provides a pair of functions to make handling this workflow
+  easy: setMessage stores a message in the session, and getMessage
+  both reads this message and deletes it from the store to prevent it
+  from being displayed again. \\
+
+  The common approach is to check for messages in defaultLayout so
+  that the message can be shown to the user immediately, without
+  having to add getMessage calls in every handler.
+\end{frame}
+
+\begin{frame}[fragile]{Messages}
+  This is included in our scaffolding's defaultLayout. \\
+
+  \begin{minted}[frame=single]{haskell}
+    defaultLayout widget = do
+      master <- getYesod
+      mmsg <- getMessage
+
+      pc <- widgetToPageContent $(widgetFile "default-layout")
+      withUrlRenderer
+        $(hamletFile "templates/default-layout-wrapper.hamlet")
+  \end{minted}
+  \vspace{0.5em}
+  \begin{minted}[frame=single]{HTML}
+    <div #wrapper>
+      <div .container>
+        $maybe msg <- mmsg
+          <div #message>#{msg}
+
+      <div .container>
+        ^{widget}
+  \end{minted}
+\end{frame}
+
+\subsection{Before Lunch review}
+
+\section{Lunch}
+
+\section{Starting the Blog}
 
 \section{Authentication and Authorization}
 \begin{frame}{Authentication and Authorization}
