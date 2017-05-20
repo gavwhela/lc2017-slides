@@ -48,6 +48,17 @@
   \end{frame}
 }
 
+\AtBeginSubsection[]{
+  \begin{frame}
+    \vfill
+    \centering
+    \begin{beamercolorbox}[sep=8pt,center,shadow=true,rounded=true]{title}
+    \usebeamerfont{title}\insertsubsectionhead\par%
+    \end{beamercolorbox}
+    \vfill
+  \end{frame}
+}
+
 \title{Building a Blogging System}
 \subtitle{with Haskell and Yesod}
 \author{Gavin Whelan}
@@ -60,10 +71,10 @@
 \end{frame}
 
 \begin{frame}{About Me}
-  IU CS Graduate\\
+  IU Computer Science Graduate\\
   Hunger Prevention Manager\\
   \\
-  My "site": \href{https://ambientmemory.com}{ambientmemory.com}\\
+  My site: \href{https://ambientmemory.com}{ambientmemory.com}\\
   GitHub: \href{https://github.com/gavwhela}{@gavwhela}\\
   \\
   CTO Whiteboard Dynamics LLC\\
@@ -71,44 +82,47 @@
 \end{frame}
 
 \begin{frame}{Attributions}
-  This presentation uses resources from the Yesod Book.\\
+  This presentation uses resources from the Yesod Book,\\
   \url{https://github.com/yesodweb/yesodweb.com-content}\\
   \url{http://www.yesodweb.com/book}\\
   \\
-  As well as the yesod-postgres template.\\
+  as well as the yesod-postgres template.\\
   \href{https://github.com/commercialhaskell/stack-templates/blob/master/LICENSE}{MIT License}\\
 \end{frame}
 
-%% \begin{frame}{Layout}
-%%   \begin{itemize}
-%%   \item<1-> Basic background
-%%   \item<2-> Set up Codio \& Dive into an exercise
-%%   \item<3-> Routing \& Templating intro
-%%   \item<4-> Start building on the scaffolding
-%%   \item<5-> Sessions
-%%   \item<6> Lunch
-%%   \end{itemize}
-%% \end{frame}
-%% 
-%% \begin{frame}{Layout}
-%%   \begin{itemize}
-%%   \item<1-> Lunch
-%%   \item<2-> Starting the blog
-%%   \item<3-> Database Storage
-%%   \item<4-> Authentication and Authorization
-%%   \item<5-> Snack
-%%   \end{itemize}
-%% \end{frame}
-%% 
-%% \begin{frame}{Layout}
-%%   \begin{itemize}
-%%   \item<1-> Snack
-%%   \item<2-> Esqueleto
-%%   \item<2> Finishing up
-%%   \end{itemize}
-%% \end{frame}
-
 \section{Basic Background}
+
+\subsection{Why Yesod?}
+\begin{frame}{Why Yesod?}
+  \begin{itemize}
+  \item<1-> Plays to the strengths of Haskell
+    \begin{itemize}
+    \item Well defined types to prevent unsafe data use
+    \item Referential transparency preventing unintended side effects
+    \end{itemize}
+  \item<2-> Saves typing
+    \begin{itemize}
+    \item Forms leverage Applicatives to reduce boilerplate
+    \item Terse DSLs for route definitions and database entities
+    \item Code generation to write correct and consistent code for you
+    \end{itemize}
+  \item<3-> Performant
+    \begin{itemize}
+    \item Templating approaches allow HTML, CSS, and Javascript to be
+      optimized at compile time, by GHC
+    \item Advanced underlying technologies such as conduits and
+      builders allow code to run in constant memory
+    \item Flagship web server Warp is highly scalable, using
+      lightweight user threads running on multiple processes,
+      receiving IO events with epoll (or kqueue)
+    \end{itemize}
+  \item<4-> Modular
+    \begin{itemize}
+    \item Many general purpose packages have spun off of Yesod and can
+      be used independently
+    \end{itemize}
+  \end{itemize}
+\end{frame}
 
 \subsection{Language Extensions}
 \begin{frame}[fragile]{Overloaded Strings}
@@ -186,8 +200,8 @@
   \end{minted}
 \end{frame}
 
-\subsection{Minimal Example}
-\begin{frame}[fragile]{Minimal Example}
+\subsection{Hello World}
+\begin{frame}[fragile]{Hello World}
   \begin{minted}{haskell}
     {-# LANGUAGE OverloadedStrings #-}
     {-# LANGUAGE QuasiQuotes       #-}
@@ -211,17 +225,21 @@
   \end{minted}
 \end{frame}
 
-\begin{frame}{Minimal Example: Result}
+\begin{frame}{Hello World: Result}
   \includegraphics[width=\textwidth,height=0.8\textheight,keepaspectratio]{example}
 \end{frame}
-
-%%%%%%%% Maybe put something about setTitle here or something
 
 \section{Set up Codio \& Dive into an exercise}
 
 \subsection{Codio}
 \begin{frame}{Setting up Codio}
+  Sign in to Codio \\
 
+  Join the class \\
+
+  Enter the first unit \\
+
+  Should see readme \\
 \end{frame}
 
 \subsection{First Exercise}
@@ -249,71 +267,26 @@
   \end{minted}
 \end{frame}
 
-%% ~25 minutes in I think
-
 \subsection{What did we do?}
 
-\begin{frame}[fragile]{Foundation Datatype}
-  Remember these lines?
-  \begin{minted}[frame=single]{haskell}
-    data Links = Links
-
-    instance Yesod Links
-  \end{minted}
-  \pause
-  
-  Links is your foundation datatype, in this example it doesn't
-  actually store any data, but it can be a good place to keep settings
-  and values requiring initalization before your application starts
-  running, such as database connections. Every handler has access to
-  data present in the foundation datatype.
+\begin{frame}{Congratulations!}
+  Congratulations, you've just added a new page to a Yesod application!\\
+  \\
+  So far you've already used:\\
+  \begin{itemize}
+  \item Monads (hopefully you weren't scared of those)
+  \item Shakespearean Templating
+  \item Routing DSL
+  \item Typesafe URLs
+  \item Handlers
+  \item Quasi-Quoters
+  \item And more!
+  \end{itemize}
 \end{frame}
 
-\begin{frame}[fragile]{Yesod Typeclass}
-  The Yesod typeclass gives a central place for defining settings for
-  the application. Every method has intelligent defaults, so no
-  implementation is required, however extensive modification is
-  possible.
-
-  \begin{minted}[frame=single]{haskell}
-    class RenderRoute site => Yesod site where
-        approot :: Approot site
-        errorHandler :: ErrorResponse -> Handler TypedContent
-        defaultLayout :: Widget -> Handler Html
-        isAuthorized :: Route site -> Bool -> Handler AuthResult
-        authRoute :: site -> Maybe (Route site)
-        makeSessionBackend :: site -> IO (Maybe SessionBackend)
-        yesodMiddleware :: ToTypedContent res => Handler res -> Handler res
-        defaultMessageWidget :: Html -> HtmlUrl (Route site) -> Widget
-  \end{minted}
-\end{frame}
-
-\section{Routing \& Templating intro}
-\subsection{Routing DSL}
-\begin{frame}[fragile]{Routing DSL}
-  Declares the routing of paths to handlers or subsites. Specifies
-  allowed HTTP methods.
-
-  \begin{minted}[frame=single]{haskell}
-    /             HomeR     GET
-    /blog         BlogR     GET POST
-    /blog/#BlogId BlogPostR GET POST
-
-    /static       StaticR Static getStatic
-  \end{minted}
-\end{frame}
-
-\begin{frame}[fragile]{Routing DSL}
-  Generates a route data type using the resource names.
-  %%%%%%% Actually mkYesod fix this
-  \begin{minted}[frame=single]{haskell}
-    data MyRoute = HomeR
-                 | BlogR
-                 | BlogPostR BlogId
-  \end{minted}
-\end{frame}
-
+\section{Content Creation}
 \subsection{Shakespearean Templating}
+
 \begin{frame}{Shakespearean Templating}
   General purpose templating languages\\
   \\
@@ -325,26 +298,26 @@
   \end{tabular}
 \end{frame}
 
-\begin{frame}{Common}
-  \#\{...\} Variable interpolation\\
-  @\{...\} URL Interpolation\\
-  @?\{...\} URL Interpolation w/ query parameters\\
-  \textasciicircum\{...\} Template Embedding\\
+\begin{frame}[fragile]{Interpolation}
+  \begin{tabular} { l l }
+    \mintinline{haskell}{#{myVar}}                               & Variable interpolation \\
+    \pause
+    \mintinline{haskell}{@{HomeR}}                               & URL interpolation \\
+    \pause
+    \mintinline{haskell}{@?{(HomeR, [("token", validateToken)]}} & $\uparrow$ With query parameters \\
+    \pause
+    \mintinline{haskell}{^{footer}}                              & Template Embedding\\
+  \end{tabular}
 \end{frame}
 
 \begin{frame}{Hamlet}
-  Whitespace based, no closing tags (except same line)\\
-  \\
-  . as shortcut for class=\\
-  \# as shortcut for id=\\
-  :...:...: optional attribute\\
-  Quotes optional\\
-  \$case \$of \\
-  \$with \\
-  \$doctype \\
-  \$forall \\
-  \$maybe \$nothing\\
-  \$if \$elseif \$else\\
+  \begin{itemize}
+  \item<1-> Whitespace based, no closing tags\\
+  \item<2-> Interpolations\\
+  \item<3-> Quality of life improvements\\
+  \item<4-> Embedded logic, looping, and pattern matching \\
+  \item<5-> Optional attributes\\
+  \end{itemize}
 \end{frame}
 
 \begin{frame}[fragile]{Hamlet}
@@ -352,9 +325,9 @@
     $doctype 5
     <html>
         <head>
-            <title>#{pageTitle} - My Site
+            <title> <a href=@{HomeR}> #{pageTitle} - My Site </a>
             <link rel=stylesheet href=@{Stylesheet}>
-        <body>
+        <body #body>
             <h1 .page-title>#{pageTitle}
             <p>Here is a list of your friends:
             $if null friends
@@ -363,15 +336,75 @@
                 <ul>
                     $forall Friend name age <- friends
                         <li>#{name} (#{age} years old)
-            <footer>^{copyright}
+  \end{minted}
+\end{frame}
+
+\begin{frame}[fragile]{Template interpolation}
+  \begin{minted}{Haskell}
+    wrapper :: HtmlUrl a -> HtmlUrl a
+    wrapper content =
+      [hamlet|
+          <html>
+              <head>
+                  <title> My Site
+              <body>
+                ^{content}
+      |]
+
+    content :: HtmlUrl a
+    content =
+      [hamlet|
+        <h1> Welcome
+        <p> This is the content hamlet!
+      |]
+  \end{minted}
+\end{frame}
+
+\begin{frame}[fragile]{More Embedded Logic}
+  Attributes:\\
+  \begin{minted}[frame=single]{HTML}
+    <input type=checkbox :isChecked:checked>
+    <p :isRed:style="color:red">
+  \end{minted}
+  \pause
+  Maybe values:\\
+  \begin{minted}[frame=single]{HTML}
+    $maybe name <- maybeName
+      <p>Your name is #{name}
+    $nothing
+      <p>I don't know your name.
+  \end{minted}
+  \pause
+  \begin{minted}[frame=single]{HTML}
+    $maybe Person firstName lastName <- maybePerson
+      <p>Your name is #{firstName} #{lastName}
+  \end{minted}
+\end{frame}
+
+\begin{frame}[fragile]{More Embedded Logic}
+  Pattern matching:\\
+  \begin{minted}[frame=single]{HTML}
+    $case foo
+      $of Left bar
+        <p>It was left: #{bar}
+      $of Right baz
+        <p>It was right: #{baz}
+  \end{minted}
+  \pause
+  With:\\
+  \begin{minted}[frame=single]{HTML}
+    $with foo <- (long ugly) expression that $ should only $ happen once
+      <p>But I'm going to use #{foo} multiple times. #{foo}
   \end{minted}
 \end{frame}
 
 \begin{frame}{Lucius}
-  Mostly a superset of CSS\\
-  Nested blocks\\
-  Define variables\\
-  Mixins\\
+  \begin{itemize}
+  \item<1-> Intended to be a superset of CSS\\
+  \item<2-> Nested blocks\\
+  \item<3-> Variable definitions\\
+  \item<4-> Mixins\\
+  \end{itemize}
 \end{frame}
 
 \begin{frame}[fragile]{Lucius}
@@ -416,36 +449,31 @@
   \end{minted}
 \end{frame}
 
-\begin{frame}{Julius}
-  Just JavaScript with interpolation\\
+\begin{frame}[fragile]{Julius}
+  Simplist of the three\\
+  \pause
+  Performs no transformations other than allowing the forms of interpolation\\
+  \pause
+  \begin{minted}[frame=single]{Javascript}
+    $(function(){
+        $("section.#{sectionClass}").hide();
+        $("#mybutton").click(function(){
+            document.location = "@{SomeRouteR}";
+        });
+        ^{addBling}
+    });
+  \end{minted}
 \end{frame}
 
 \begin{frame}[fragile]{QuasiQuoters}
   \begin{minted}{haskell}
-    [hamlet|<h1>My Title|]
-    [lucius|h1 { color: green } |]
+    [hamlet| <h1>My Title |]
+    [lucius| h1 { color: green } |]
+    [julius| alert("Hi") |]
   \end{minted}
+  \pause
+  Wait a minute, what was that whamlet Quasi-Quoter?
 \end{frame}
-
-\begin{frame}{Functions}
-  \begin{center}
-    \begin{tabular}{ |c|c|c|c| }
-      \hline
-      Language & QuasiQuoter & External File & Reload\\
-      \hline
-      Hamlet & hamlet & hamletFile & N/A\\
-      \hline
-      Cassius & cassius & cassiusFile & cassiusFileReload\\
-      \hline
-      Lucius & lucius & luciusFile & luciusFileReload\\
-      \hline
-      Julius & julius & juliusFile & juliusFileReload\\
-      \hline
-    \end{tabular}
-  \end{center}
-\end{frame}
-
-\section{Start building on the scaffolding}
 
 \subsection{Widgets}
 \begin{frame}{Widgets}
@@ -479,7 +507,298 @@
   \end{minted}
 \end{frame}
 
+\begin{frame}[fragile]{Widget Monad}
+  Widgets can be composed monadically.
+  \begin{minted}[frame=single,escapeinside=??]{haskell}
+    myWidget1 = do
+      headerClass <- newIdent
+      toWidget [hamlet| <h1 .#{headerClass}>My Title|]
+      toWidget [lucius| .#{headerClass} { color: green } |]
+
+    myWidget2 = do
+      setTitle "My Page Title"
+      addScriptRemote "http://www.example.com/script.js"
+
+    myWidget = do
+      myWidget1
+      myWidget2
+  \end{minted}
+\end{frame}
+
+\begin{frame}[fragile]{Whamlet}
+  \begin{minted}{Haskell}
+    wrapper =
+      [hamlet|
+        <h1> My Site
+        <div>
+            ^{content}
+      |]
+
+   content = [hamlet|
+                <p> This is the content!
+              |]
+  \end{minted}
+\end{frame}
+
+\begin{frame}[fragile]{Whamlet}
+  \begin{minted}{Haskell}
+    wrapper =
+      [hamlet|
+        <h1> My Site
+        <div>
+            ^{content}
+      |]
+
+    content = do
+      toWidget
+        [lucius|
+          p {
+              text-decoration: underline;
+          }
+        |]
+      toWidget
+        [hamlet|
+          <p> This is the content!
+        |]
+  \end{minted}
+\end{frame}
+
+\begin{frame}[fragile]{Whamlet}
+  \begin{minted}{Haskell}
+    wrapper =
+      [hamlet|
+        <h1> My Site
+        <div>
+            ^{content} <!-- Type Error -->
+      |]
+
+    content = do
+      toWidget
+        [lucius|
+          p {
+              text-decoration: underline;
+          }
+        |]
+      toWidget
+        [hamlet|
+          <p> This is the content!
+        |]
+  \end{minted}
+\end{frame}
+
+\begin{frame}[fragile]{Whamlet}
+  \begin{minted}{Haskell}
+    wrapper =
+      [whamlet|
+        <h1> My Site
+        <div>
+            ^{content}
+      |]
+
+    content = do
+      toWidget
+        [lucius|
+          p {
+              text-decoration: underline;
+          }
+        |]
+      toWidget
+        [hamlet|
+          <p> This is the content!
+        |]
+  \end{minted}
+\end{frame}
+
+\subsection{Exercise Two}
+\begin{frame}[fragile]{Exercise Two}
+  \begin{minted}{Haskell}
+    getHomeR = defaultLayout $ do
+                 setTitle "Welcome Home"
+                 addScriptRemote "https://code.jquery.com/jquery-3.2.1.js"
+                 toWidget
+                   [julius|
+                     $("h1").click(function(){
+                         alert("Header Clicked");
+                     }); |]
+
+                 toWidget [lucius| h1 { color: green } |]
+                 toWidgetHead
+                   [hamlet|<meta name=description content=#{contentDescription}>|]
+
+                 [whamlet|
+                    <h1>Welcome Back!
+                    ^{footer copyright}
+                 |]
+
+        where contentDescription = "The homepage" :: String
+              copyright = "Someone" :: String
+  \end{minted}
+\end{frame}
+
+\section{Handlers that actually do something}
+\subsection{Getting data from the route}
+\begin{frame}[fragile]{What mkYesod actually generates from the routes}
+  \begin{minted}[frame=single]{haskell}
+    mkYesod "App" [parseRoutes|
+    / HomeR GET
+    |]
+  \end{minted}
+  \pause
+  \begin{minted}[frame=single]{haskell}
+    instance RenderRoute HelloWorld where
+        data Route HelloWorld = HomeR
+            deriving (Show, Eq, Read)
+        renderRoute HomeR = ([], [])
+    
+    instance ParseRoute HelloWorld where
+        parseRoute ([], _) = Just HomeR
+        parseRoute _       = Nothing
+    
+    instance YesodDispatch HelloWorld where
+        yesodDispatch env req =
+            yesodRunner handler env mroute req
+          where
+            mroute = parseRoute (pathInfo req, textQueryString req)
+            handler =
+                case mroute of
+                    Nothing -> notFound
+                    Just HomeR ->
+                        case requestMethod req of
+                            "GET" -> getHomeR
+                            _     -> badMethod
+    
+    type Handler = HandlerT HelloWorld IO
+  \end{minted}
+\end{frame}
+
+\begin{frame}[fragile]{Dynamic Routes}
+  \begin{minted}[frame=single]{haskell}
+    /person/#Text         PersonR GET POST
+    /month/#Text/day/#Int DateR   GET
+  \end{minted}
+\end{frame}
+
+\begin{frame}{What mkYesod actually generates from the routes}
+  \begin{minted}[frame=single]{haskell}
+    data MyRoute = PersonR Text
+                 | DateR Text Int
+  \end{minted}
+  \pause
+  \begin{minted}[frame=single]{HTML}
+    <a href=@{BlogPostR blogId}> #{blogTitle}
+  \end{minted}
+\end{frame}
+
+\begin{frame}[fragile]{Routing DSL}
+  \begin{minted}{Haskell}
+    data App = App
+
+    mkYesod "App" [parseRoutes|
+      / HomeR GET
+    |]
+
+    getHomeR :: Handler Html
+    getHomeR = undefined
+  \end{minted}
+\end{frame}
+
+\begin{frame}[fragile]{Routing DSL}
+  \begin{minted}{Haskell}
+    data App = App
+
+    mkYesod "App" [parseRoutes|
+      /             HomeR     GET
+      /blog/#BlogId BlogPostR GET
+    |]
+
+    getHomeR :: Handler Html
+    getHomeR = undefined
+
+    getBlogPostR :: BlogId -> Handler Html
+    getBlogPostR blogId = undefined
+  \end{minted}
+\end{frame}
+
+\subsection{Handler Monad}
+\begin{frame}[fragile]{Handler Monad}
+  \begin{minted}{haskell}
+    getHomeR :: Handler Html
+
+    type Handler a = HandlerT site IO a
+
+    getHomeR :: HandlerT Links IO Html
+
+    defaultLayout :: Widget -> Handler Html
+
+    type Widget = WidgetT site IO ()
+
+    defaultLayout :: Yesod site => WidgetT site IO () -> HandlerT site IO Html
+    [whamlet|<a href=@{Page1R}>Go to page1!|] :: Widget
+
+    defaultLayout [whamlet|<a href=@{Page1R}>Go to page1!|] :: Handler Html
+  \end{minted}
+\end{frame}
+
+\begin{frame}[fragile]{Foundation Datatype}
+  Remember these lines?
+  \begin{minted}[frame=single]{haskell}
+    data Links = Links
+
+    instance Yesod Links
+  \end{minted}
+  \pause
+
+  Links is your foundation datatype, in this example it doesn't
+  actually store any data, but it can be a good place to keep settings
+  and values requiring initalization before your application starts
+  running, such as database connections. Every handler has access to
+  data present in the foundation datatype.
+\end{frame}
+
+\begin{frame}[fragile]{Yesod Typeclass}
+  The Yesod typeclass gives a central place for defining settings for
+  the application. Every method has intelligent defaults, so no
+  implementation is required, however extensive modification is
+  possible.
+
+  \begin{minted}[frame=single]{haskell}
+    class RenderRoute site => Yesod site where
+        approot :: Approot site
+        errorHandler :: ErrorResponse -> Handler TypedContent
+        defaultLayout :: Widget -> Handler Html
+        isAuthorized :: Route site -> Bool -> Handler AuthResult
+        authRoute :: site -> Maybe (Route site)
+        makeSessionBackend :: site -> IO (Maybe SessionBackend)
+        yesodMiddleware :: ToTypedContent res => Handler res -> Handler res
+        defaultMessageWidget :: Html -> HtmlUrl (Route site) -> Widget
+  \end{minted}
+\end{frame}
+
+\section{Start building on the scaffolding}
+
+
 \subsection{Scaffolding Structure}
+\begin{frame}{Site Scaffolding}
+  \dirtree{%
+    .1 Project/.
+    .2 app/\DTcomment{General execution wrappers}.
+    .2 config/\DTcomment{Configuration loaded by the application}.
+    .3 favicon.ico.
+    .3 robots.txt.
+    .3 routes.
+    .3 settings.yml.
+    .2 Handler/\DTcomment{Files containing handlers}.
+    .3 Common.hs.
+    .3 Home.hs.
+    .2 Import/.
+    .2 templates/.
+    .2 Application.hs.
+    .2 Foundation.hs.
+    .2 Import.hs.
+    .2 Settings.hs.
+  }
+\end{frame}
+
 \begin{frame}{Site Scaffolding}
   \dirtree{%
     .1 Project/.
@@ -487,52 +806,18 @@
     .2 config/\DTcomment{Configuration loaded by the application}.
     .2 Handler/\DTcomment{Files containing handlers}.
     .2 Import/.
-    .2 Settings/.
-    .2 static/.
+    .3 NoFoundation.hs.
     .2 templates/.
+    .3 default-layout-wrapper.hamlet.
+    .3 default-layout.hamlet.
+    .3 default-message-widget.hamlet.
+    .3 homepage.hamlet.
     .2 Application.hs.
     .2 Foundation.hs.
     .2 Import.hs.
-    .2 project.cabal.
-    .2 LICENSE.
     .2 Settings.hs.
-    .2 stack.yaml.
   }
 \end{frame}
-
-%%  \dirtree{%
-%%    .1 Project/.
-%%    .2 app/.
-%%    .3 devel.hs.
-%%    .3 DevelMain.hs.
-%%    .3 main.hs.
-%%    .2 config/.
-%%    .3 client\_session\_key.aes.
-%%    .3 favicon.ico.
-%%    .3 robots.txt.
-%%    .3 routes.
-%%    .3 settings.yml.
-%%    .2 Handler/.
-%%    .3 Common.hs.
-%%    .3 Home.hs.
-%%    .2 Import/.
-%%    .3 NoFoundation.hs.
-%%    .2 Settings/.
-%%    .3 StaticFiles.hs.
-%%    .2 static/.
-%%    .2 templates/.
-%%    .3 default-layout-wrapper.hamlet.
-%%    .3 default-layout.hamlet.
-%%    .3 default-message-widget.hamlet.
-%%    .3 homepage.hamlet.
-%%    .2 Application.hs.
-%%    .2 Foundation.hs.
-%%    .2 Import.hs.
-%%    .2 project.cabal.
-%%    .2 LICENSE.
-%%    .2 Settings.hs.
-%%    .2 stack.yaml.
-%%  }
 
 \subsection{Sessions}
 
@@ -623,6 +908,42 @@
 \end{frame}
 
 \subsection{Before Lunch review}
+\begin{frame}[fragile]{Review}
+  Routing\\
+  \begin{minted}[frame=single]{haskell}
+    / HomeR GET
+    /add/#Int/#Int AddR GET
+    /message MessageR POST
+  \end{minted}
+\end{frame}
+\begin{frame}[fragile]{Review}
+  Shakespearean templating:\\
+  \begin{minted}[frame=single]{HTML}
+    <html>
+      <head>
+          <title>#{pageTitle}
+          <link rel=stylesheet href=@{Stylesheet}>
+      <body>
+          <h1 .page-title>#{pageTitle}
+          $maybe msg <- mmsg
+            <div #message>#{msg}
+          $nothing
+            <div #message>No message for you.
+          ^{footer}
+  \end{minted}
+\end{frame}
+\begin{frame}[fragile]{Review}
+  Widgets\\
+\end{frame}
+\begin{frame}[fragile]{Review}
+  The Scaffolding\\
+\end{frame}
+\begin{frame}[fragile]{Review}
+  Sessions\\
+\end{frame}
+\begin{frame}[fragile]{Review}
+  Basic Handler Functions\\
+\end{frame}
 
 \section{Lunch}
 
@@ -992,6 +1313,30 @@
   \begin{minted}[frame=single]{haskell}
     object [ "key1" .= "val1", "key2" .= "val2" ]
   \end{minted}
+\end{frame}
+
+\begin{frame}[fragile]{Starting a Yesod Project IRL}
+  Available templates:
+  \begin{itemize}
+  \item yesod-minimal
+  \item yesod-mongo
+  \item yesod-mysql
+  \item yesod-postgres
+  \item yesod-postgres-fay
+  \item yesod-simple
+  \item yesod-sqlite
+  \end{itemize}
+  \begin{minted}[frame=single]{bash}
+    stack new my-project <template> && cd my-project
+    stack build yesod-bin cabal-install --install-ghc
+    stack build
+    stack exec -- yesod devel
+  \end{minted}
+  \url{https://www.yesodweb.com/page/quickstart}
+\end{frame}
+
+\begin{frame}{Thanks!}
+  
 \end{frame}
 
 \end{document}
