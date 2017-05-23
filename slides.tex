@@ -72,7 +72,7 @@
 
 \begin{frame}{About Me}
   IU Computer Science Graduate\\
-  Hunger Prevention Manager\\
+  LambdaConf Hunger Prevention Manager\\
   \\
   My site: \href{https://ambientmemory.com}{ambientmemory.com}\\
   GitHub: \href{https://github.com/gavwhela}{@gavwhela}\\
@@ -286,7 +286,6 @@
 
 \section{Content Creation}
 \subsection{Shakespearean Templating}
-
 \begin{frame}{Shakespearean Templating}
   General purpose templating languages\\
   \\
@@ -613,22 +612,22 @@
 \begin{frame}[fragile]{Exercise Two}
   \begin{minted}{Haskell}
     getHomeR = defaultLayout $ do
-                 setTitle "Welcome Home"
-                 addScriptRemote "https://code.jquery.com/jquery-3.2.1.js"
-                 toWidget
-                   [julius|
-                     $("h1").click(function(){
-                         alert("Header Clicked");
-                     }); |]
+          setTitle "Welcome Home"
+          addScriptRemote "https://code.jquery.com/jquery-3.2.1.js"
+          toWidget
+            [julius|
+              $("h1").click(function(){
+                  alert("Header Clicked");
+              }); |]
 
-                 toWidget [lucius| h1 { color: green } |]
-                 toWidgetHead
-                   [hamlet|<meta name=description content=#{contentDescription}>|]
+          toWidget [lucius| h1 { color: green } |]
+          toWidgetHead
+            [hamlet|<meta name=description content=#{contentDescription}>|]
 
-                 [whamlet|
-                    <h1>Welcome Back!
-                    ^{footer copyright}
-                 |]
+          [whamlet|
+             <h1>Welcome Back!
+             ^{footer copyright}
+          |]
 
         where contentDescription = "The homepage" :: String
               copyright = "Someone" :: String
@@ -637,26 +636,22 @@
 
 \section{Handlers that actually do something}
 \subsection{Getting data from the route}
-\begin{frame}[fragile]{What mkYesod actually generates from the routes}
+\begin{frame}[fragile]{What mkYesod generates from the routes}
   \begin{minted}[frame=single]{haskell}
-    mkYesod "App" [parseRoutes|
-    / HomeR GET
-    |]
+    mkYesod "App" [parseRoutes| /home HomeR GET |]
   \end{minted}
   \pause
-  \begin{minted}[frame=single]{haskell}
-    instance RenderRoute HelloWorld where
-        data Route HelloWorld = HomeR
-            deriving (Show, Eq, Read)
-        renderRoute HomeR = ([], [])
-    
-    instance ParseRoute HelloWorld where
-        parseRoute ([], _) = Just HomeR
-        parseRoute _       = Nothing
-    
-    instance YesodDispatch HelloWorld where
-        yesodDispatch env req =
-            yesodRunner handler env mroute req
+  \begin{minted}[fontsize=\scriptsize,frame=single]{haskell}
+    instance RenderRoute App where
+        data Route App = HomeR deriving (Show, Eq, Read)
+        renderRoute HomeR = (["home"], [])
+
+    instance ParseRoute App where
+        parseRoute (["home"], _) = Just HomeR
+        parseRoute _             = Nothing
+
+    instance YesodDispatch App where
+        yesodDispatch env req = yesodRunner handler env mroute req
           where
             mroute = parseRoute (pathInfo req, textQueryString req)
             handler =
@@ -666,8 +661,6 @@
                         case requestMethod req of
                             "GET" -> getHomeR
                             _     -> badMethod
-    
-    type Handler = HandlerT HelloWorld IO
   \end{minted}
 \end{frame}
 
@@ -676,46 +669,18 @@
     /person/#Text         PersonR GET POST
     /month/#Text/day/#Int DateR   GET
   \end{minted}
-\end{frame}
-
-\begin{frame}{What mkYesod actually generates from the routes}
-  \begin{minted}[frame=single]{haskell}
-    data MyRoute = PersonR Text
-                 | DateR Text Int
-  \end{minted}
   \pause
   \begin{minted}[frame=single]{HTML}
-    <a href=@{BlogPostR blogId}> #{blogTitle}
+    <a href=@{PersonR "Gavin"}>Gavin
+    <a href=@{DateR "May" 25}>When is LambdaConf?
   \end{minted}
-\end{frame}
+  \pause
+  \begin{minted}[frame=single]{haskell}
+    getPersonR :: Text -> Handler Html
+    getPersonR name = undefined
 
-\begin{frame}[fragile]{Routing DSL}
-  \begin{minted}{Haskell}
-    data App = App
-
-    mkYesod "App" [parseRoutes|
-      / HomeR GET
-    |]
-
-    getHomeR :: Handler Html
-    getHomeR = undefined
-  \end{minted}
-\end{frame}
-
-\begin{frame}[fragile]{Routing DSL}
-  \begin{minted}{Haskell}
-    data App = App
-
-    mkYesod "App" [parseRoutes|
-      /             HomeR     GET
-      /blog/#BlogId BlogPostR GET
-    |]
-
-    getHomeR :: Handler Html
-    getHomeR = undefined
-
-    getBlogPostR :: BlogId -> Handler Html
-    getBlogPostR blogId = undefined
+    getDateR :: Text -> Int -> Handler Html
+    getDateR month day = undefined
   \end{minted}
 \end{frame}
 
@@ -726,56 +691,196 @@
 
     type Handler a = HandlerT site IO a
 
-    getHomeR :: HandlerT Links IO Html
+    getHomeR :: HandlerT Task IO Html
+  \end{minted}
+\end{frame}
 
-    defaultLayout :: Widget -> Handler Html
+\begin{frame}[fragile]{Handler Monad}
+  \begin{minted}{haskell}
+    getPersonR :: Text -> Handler Html
+    getPersonR name = do
+        let reversedName = Data.Text.reverse name
+        defaultLayout $
+            [whamlet|
+                <p> Name is: #{name}
+                <p> Name reversed is: #{reversedName}
+  \end{minted}
+\end{frame}
 
-    type Widget = WidgetT site IO ()
+\begin{frame}[fragile]{Some functions in the Handler Monad}
+  \begin{minted}{haskell}
+    -- | Returns the application's foundation value
+    getYesod :: Handler App
+    -- | returns a new identifier
+    newIdent :: Handler Text
+    -- | Redirect status 303
+    redirect :: Route App -> Handler a
+    -- | 404 Error
+    notFound :: Handler a
+    -- | 405 method not supported error
+    badMethod :: Handler a
+    -- | 401 not authenticated
+    notAuthenticated :: Handler a
+    -- | 403 Permission Denied
+    permissionDenied :: Handler a
+  \end{minted}
+\end{frame}
 
-    defaultLayout :: Yesod site => WidgetT site IO () -> HandlerT site IO Html
-    [whamlet|<a href=@{Page1R}>Go to page1!|] :: Widget
+\begin{frame}[fragile]{IO Actions in Handlers}
+  Because Handler is a monad transformer over IO, IO actions can be
+  run with liftIO.
+  \begin{minted}[frame=single]{haskell}
+    getHomeR :: Handler Html
+    getHomeR = do
+        currentTime <- liftIO $ getCurrentTime
+        defaultLayout $
+          [whamlet|
+            <p>It is currently: #{show currentTime}
+          |]
+  \end{minted}
+\end{frame}
 
-    defaultLayout [whamlet|<a href=@{Page1R}>Go to page1!|] :: Handler Html
+\subsection{Keeping global values}
+\begin{frame}[fragile]{Foundation Datatype}
+  \begin{minted}{haskell}
+    data Task = Task
+
+    mkYesod "Task" [parseRoutes|
+    / HomeR GET
+    |]
+
+    instance Yesod Task
+
+    getHomeR :: Handler Html
+    getHomeR = do
+        defaultLayout [whamlet|<p>This site is for: Lambdaconf|]
+
+    main :: IO ()
+    main = warp 3000 Task
   \end{minted}
 \end{frame}
 
 \begin{frame}[fragile]{Foundation Datatype}
-  Remember these lines?
-  \begin{minted}[frame=single]{haskell}
-    data Links = Links
+  \begin{minted}{haskell}
+    data App = App { appFor :: String }
 
-    instance Yesod Links
-  \end{minted}
-  \pause
+    mkYesod "App" [parseRoutes|
+    / HomeR GET
+    |]
 
-  Links is your foundation datatype, in this example it doesn't
-  actually store any data, but it can be a good place to keep settings
-  and values requiring initalization before your application starts
-  running, such as database connections. Every handler has access to
-  data present in the foundation datatype.
-\end{frame}
+    instance Yesod App
 
-\begin{frame}[fragile]{Yesod Typeclass}
-  The Yesod typeclass gives a central place for defining settings for
-  the application. Every method has intelligent defaults, so no
-  implementation is required, however extensive modification is
-  possible.
+    getHomeR :: Handler Html
+    getHomeR = do
+        who <- fmap appFor getYesod
+        defaultLayout [whamlet|<p>This site is for: #{who}|]
 
-  \begin{minted}[frame=single]{haskell}
-    class RenderRoute site => Yesod site where
-        approot :: Approot site
-        errorHandler :: ErrorResponse -> Handler TypedContent
-        defaultLayout :: Widget -> Handler Html
-        isAuthorized :: Route site -> Bool -> Handler AuthResult
-        authRoute :: site -> Maybe (Route site)
-        makeSessionBackend :: site -> IO (Maybe SessionBackend)
-        yesodMiddleware :: ToTypedContent res => Handler res -> Handler res
-        defaultMessageWidget :: Html -> HtmlUrl (Route site) -> Widget
+    main :: IO ()
+    main = warp 3000 (App { appFor = "PureScript Conf" })
   \end{minted}
 \end{frame}
 
-\section{Start building on the scaffolding}
+\begin{frame}[fragile]{Visitor Counter}
+  \begin{minted}{haskell}
+    data App = App { visitors :: IORef Int }
 
+    mkYesod "App" [parseRoutes|
+    / HomeR GET |]
+
+    instance Yesod App
+
+    getHomeR :: Handler Html
+    getHomeR = do
+        visitorsRef <- fmap visitors getYesod
+        visitors <-
+            liftIO $ atomicModifyIORef visitorsRef $ \i ->
+            (i + 1, i + 1)
+        defaultLayout
+            [whamlet| <p>Welcome, you are visitor number #{visitors}. |]
+
+    main :: IO ()
+    main = do
+        visitorsRef <- newIORef 0
+        warp 3000 (App { visitors = visitorsRef })
+  \end{minted}
+\end{frame}
+
+\subsection{Exercise Three}
+\begin{frame}[fragile]{Exercise Three}
+  In this exercise you'll be creating an app that contains a page
+  which either adds or subtracts two numbers depending on
+  configuration in the foundation datatype. You'll use dynamic routes
+  to receive the Ints, and then the foundation datatype contains the
+  binary operation to be performed on the numbers from the route.
+
+  \begin{minted}[frame=single]{haskell}
+    data Task = Task { taskBinOp :: Int -> Int -> Int }
+  \end{minted}
+\end{frame}
+
+\section{Industrial Structure}
+\subsection{Breaking up the code}
+\begin{frame}[fragile]{Logically splitting up the Application}
+  One issue with how we've been doing things so far, is that that if
+  we keep putting everything in the same file, with lots of
+  Quasi-Quotes all around, things become really ugly and unmaintainable.
+
+  \begin{minted}[frame=single]{haskell}
+    getHomeR :: Handler Html
+    getHomeR = defaultLayout $ do
+             setTitle "Welcome Home"
+             [whamlet|<h1>Welcome Back!|]
+  \end{minted}
+
+  Handlers need our Route definitions.
+
+  \begin{minted}[frame=single]{haskell}
+    mkYesod "Task" [parseRoutes|
+    /      HomeR  GET
+    |]
+  \end{minted}
+  Yet mkYesod needs our Handlers to define dispatch over routes.
+\end{frame}
+
+\begin{frame}[fragile]{Splitting mkYesod}
+  \begin{minted}[frame=single]{haskell}
+    mkYesodData "Task" [parseRoutes|
+    /      HomeR GET
+    |]
+  \end{minted}
+  This generates the route data type and the rendering functions, but
+  doesn't define dispatch.
+  \begin{minted}[frame=single]{haskell}
+    mkYesodDispatch "Task" resourcesTask
+  \end{minted}
+  This generates the actual dispatch code.
+\end{frame}
+
+\begin{frame}[fragile]{Getting rid of Quasi-Quoters}
+  \begin{minted}[frame=single]{haskell}
+    mkYesodData "Task" [parseRoutes|
+    /      HomeR GET
+    |]
+  \end{minted}
+  Instead of using Quasi-Quoters we want to put them into external
+  files.
+  \begin{minted}[frame=single]{haskell}
+    mkYesodData "Task" $(parseRoutesFile "routes")
+  \end{minted}
+\end{frame}
+
+\begin{frame}[fragile]{Getting rid of Quasi-Quoters}
+  \begin{minted}[frame=single]{haskell}
+    getHomeR =
+        defaultLayout $
+            toWidget [hamlet|<p>This is the content!|]
+  \end{minted}
+  Instead of using Quasi-Quoters we want to put them into external
+  files.
+  \begin{minted}[frame=single]{haskell}
+    getHomeR = defaultLayout $ toWidget $(hamletFile "home.hamlet")
+  \end{minted}
+\end{frame}
 
 \subsection{Scaffolding Structure}
 \begin{frame}{Site Scaffolding}
@@ -817,6 +922,142 @@
     .2 Import.hs.
     .2 Settings.hs.
   }
+\end{frame}
+
+\begin{frame}[fragile]{Scaffolding's Foundation}
+  \begin{minted}[frame=single]{haskell}
+    data App = App
+      { appSettings    :: AppSettings
+      , appLogger      :: Logger
+      }
+  \end{minted}
+  \pause
+  appSettings contains settings for the application, which are stored
+  in a yaml file, config/settings.yml.
+  \pause
+  \begin{minted}[frame=single]{yaml}
+    host:           "_env:HOST:*4" # any IPv4 host
+    port:           "_env:PORT:3000"
+    ip-from-header: "_env:IP_FROM_HEADER:false"
+    copyright: Insert copyright statement here
+  \end{minted}
+
+  This is parsed using a parser in Settings.hs.
+\end{frame}
+
+\begin{frame}[fragile]{Scaffolding's Foundation}
+  \begin{minted}[frame=single]{haskell}
+    data App = App
+      { appSettings    :: AppSettings
+      , appLogger      :: Logger
+      }
+  \end{minted}
+
+  appLogger is the application's logger, which in general doesn't
+  haven't to be interacted with directly. This is initialized in
+  Application.hs, where the foundation value is constructed.
+
+  \begin{minted}[frame=single]{haskell}
+    makeFoundation :: AppSettings -> IO App
+    makeFoundation appSettings = do
+        -- Initialize logger
+        appLogger <- newStdoutLoggerSet defaultBufSize >>= makeYesodLogger
+
+        return $ App {..}
+  \end{minted}
+
+  This is parsed using a parser in Settings.hs.
+\end{frame}
+
+\subsection{Changing Default Behaivor}
+\begin{frame}{defaultLayout?}
+  What was that defaultLayout thing?
+\end{frame}
+
+\begin{frame}[fragile]{Yesod Typeclass}
+  The Yesod typeclass gives a central place for defining settings for
+  the application. Every method has intelligent defaults, so no
+  implementation is required, however extensive modification is
+  possible.
+
+  \begin{minted}[frame=single]{haskell}
+    class RenderRoute site => Yesod site where
+        approot :: Approot site
+        errorHandler :: ErrorResponse -> Handler TypedContent
+        defaultLayout :: Widget -> Handler Html
+        isAuthorized :: Route site -> Bool -> Handler AuthResult
+        authRoute :: site -> Maybe (Route site)
+        makeSessionBackend :: site -> IO (Maybe SessionBackend)
+        yesodMiddleware :: ToTypedContent res => Handler res -> Handler res
+        defaultMessageWidget :: Html -> HtmlUrl (Route site) -> Widget
+  \end{minted}
+\end{frame}
+
+\begin{frame}[fragile]{defaultLayout}
+  \begin{minted}{haskell}
+    defaultLayout widget = do
+      master <- getYesod
+      mmsg <- getMessage
+
+      -- We break up the default layout into two components:
+      -- default-layout is the contents of the body tag, and
+      -- default-layout-wrapper is the entire page.
+      pc <- widgetToPageContent $(widgetFile "default-layout")
+      withUrlRenderer
+        $(hamletFile "templates/default-layout-wrapper.hamlet")
+  \end{minted}
+\end{frame}
+
+\begin{frame}[fragile]{default-layout-wrapper.hamlet}
+  \begin{minted}{HTML}
+    $doctype 5
+    <html lang="en">
+      <head>
+        <meta charset="UTF-8">
+
+        <title>#{pageTitle pc}
+        <meta name="description" content="">
+        <meta name="author" content="">
+
+        <meta name="viewport" content="width=device-width,initial-scale=1">
+
+        ^{pageHead pc}
+
+      <body>
+        ^{pageBody pc}
+  \end{minted}
+\end{frame}
+
+\begin{frame}[fragile]{widgetFile?}
+  This is a nice scaffolding feature that allows you to load a
+  collection of files together as a widget.\\
+  \\
+  For example:\\
+  \\
+  \begin{minted}[frame=single]{haskell}
+    $(widgetFile "homepage")
+  \end{minted}
+
+  will attempt to read homepage.hamlet, homepage.lucius, and
+  homepage.julius, and construct a widget out of them.
+\end{frame}
+
+\begin{frame}[fragile]{default-layout.hamlet}
+  \begin{minted}{HTML}
+    <div>
+        <!-- Page Contents -->
+        $maybe msg <- mmsg
+            <div>#{msg}
+
+        <div>
+            ^{widget}
+
+      <!-- Footer -->
+      <footer>
+          <div>
+              <a href=@{HomeR}>Home
+              <p> #{appCopyright $ appSettings master}
+  \end{minted}
 \end{frame}
 
 \subsection{Sessions}
@@ -907,198 +1148,310 @@
   \end{minted}
 \end{frame}
 
-\subsection{Before Lunch review}
-\begin{frame}[fragile]{Review}
-  Routing\\
-  \begin{minted}[frame=single]{haskell}
-    / HomeR GET
-    /add/#Int/#Int AddR GET
-    /message MessageR POST
-  \end{minted}
+\subsection{Exercise Four}
+\begin{frame}[fragile]{Exercise Four}
+  In this exercise you'll start using the scaffolding. The task will
+  be to add a new page that simply sets the a message in the session
+  and redirect to the homepage. Then I'd like you to edit the
+  default-layout.hamlet file (or if you'd rather add a
+  default-layout.lucius file) and add some form of change or styling
+  to how pages are displayed. Also add some message to the copyright
+  field of the config/setting.yml.
 \end{frame}
-\begin{frame}[fragile]{Review}
-  Shakespearean templating:\\
-  \begin{minted}[frame=single]{HTML}
-    <html>
-      <head>
-          <title>#{pageTitle}
-          <link rel=stylesheet href=@{Stylesheet}>
-      <body>
-          <h1 .page-title>#{pageTitle}
-          $maybe msg <- mmsg
-            <div #message>#{msg}
-          $nothing
-            <div #message>No message for you.
-          ^{footer}
-  \end{minted}
-\end{frame}
-\begin{frame}[fragile]{Review}
-  Widgets\\
-\end{frame}
-\begin{frame}[fragile]{Review}
-  The Scaffolding\\
-\end{frame}
-\begin{frame}[fragile]{Review}
-  Sessions\\
-\end{frame}
-\begin{frame}[fragile]{Review}
-  Basic Handler Functions\\
-\end{frame}
-
-\section{Lunch}
-
-\section{Starting the Blog}
 
 \section{Authentication and Authorization}
-\begin{frame}{Authentication and Authorization}
-  
-\end{frame}
-
-\subsection{YesodAuth Typeclass}
-\begin{frame}[fragile]{YesodAuth Typeclass}
-  Minimal complete definition: loginDest, logoutDest,
-  (authenticate$|$getAuthId), authPlugins, authHttpManager \\
-  \\
-  \begin{minted}[frame=single]{haskell}
-    class (Yesod site) => YesodAuth site where
-        type AuthId site
-        authLayout :: Widget -> Handler Html
-        loginDest :: site -> Route site
-        logoutDest :: site -> Route site
-        authenticate :: Creds site -> Handler (AuthenticationResult site)
-        getAuthId :: Creds site -> Handler (Maybe (AuthId site))
-        authPlugins :: site -> [AuthPlugin site]
-        loginHandler :: HandlerT Auth Handler Html
-        redirectToReferer :: site -> Bool
-        authHttpManager :: site -> Manager
-  \end{minted}
-\end{frame}
-
 \subsection{isAuthorized}
 \begin{frame}[fragile]{isAuthorized}
   \begin{minted}{haskell}
-    data AuthResult = Authorized
-                    | AuthenticationRequired
-                    | Unauthorized Text
-
     isAuthorized :: Route site -> Bool -> Handler AuthResult
     isAuthorized HomeR _ = return Authorized
     isAuthorized (PostR _) False = return Authorized
     isAuthorized (PostR _) True =  isAuthenticated
+    isAuthorized (AdminR _) _ = isAdmin
 
     isAuthenticated :: Handler AuthResult
     isAuthenticated = do
         muid <- maybeAuthId
         return $ case muid of
-            Nothing -> Unauthorized "You must login to access this page"
+            Nothing -> AuthenticationRequired
             Just _ -> Authorized
+
+    isAdmin :: Handler AuthResult
+    isAdmin = do
+        muid <- maybeAuthId
+        case muid of
+          Nothing -> AuthenticationRequired
+          Just "gavwhela@gmail.com" -> Authorized
+          Just _ -> Unauthorized "Admin only page"
   \end{minted}
 \end{frame}
 
-\subsection{Yesod Auth Plugins}
+\begin{frame}{Authentication and Authorization}
+  But what's providing maybeAuthId?\\
+  What happens when authentication is required?\\
+\end{frame}
+
+\subsection{yesod-auth}
 \begin{frame}{Yesod Auth Plugins}
-
+  The yesod-auth package provides a unified interface for a number of
+  available authencation plugins. The main requirement of a backend is
+  that it identifies a user based on some unique string, such as a
+  token, email, or username. Each plugin provides some mechanism for
+  logging in. When a login is successful, the plugin sets a value in
+  the user's session that indentifies them.
 \end{frame}
 
-\section{Persistent}
-\subsection{Features}
-\begin{frame}{Features}
-  \begin{itemize}
-  \item<1-> Haskell library for handling data storage interactions.
-  \item<2-> Not restricted to Yesod, general purpose.
-  \item<3-> Database agnostic, Support for PostgreSQL, SQLite, MySQL, and MongoDB.
-  \item<4-> Handles marshalling of Haskell datatypes into the storage layer.
-  \item<5-> Type safe, concise, declarative syntax.
-  \item<6-> Automatic database migration system.
-  \end{itemize}
+\begin{frame}[fragile]{What yesod-auth provides}
+  \begin{minted}[frame=single]{haskell}
+    maybeAuthId :: Handler (Maybe (AuthId site))
+    maybeAuthPair :: Handler (Maybe (AuthId site, AuthEntity site))
+    maybeAuth :: Handler (Maybe (Entity val))
+    requireAuthId :: Handler (AuthId site)
+    requireAuthPair :: Handler (AuthId site, AuthEntity site)
+    requireAuth :: Handler (Entity val)
+  \end{minted}
+  \pause
+  In order to use any of these, your foundation must be an instance of
+  the YesodAuth typeclass
 \end{frame}
 
-\subsection{Entity Definition DSL}
-\begin{frame}[fragile]{Entity Definition DSL}
+\begin{frame}[fragile]{YesodAuth Typeclass}
+  Minimal complete definition: loginDest, logoutDest,
+  (authenticate$|$getAuthId), authPlugins, authHttpManager \\
+  \\
+  \begin{minted}[frame=single]{haskell}
+    class (Yesod master) => YesodAuth master where
+        type AuthId master
+        authLayout :: Widget -> Handler Html
+        loginDest :: master -> Route master
+        logoutDest :: master -> Route master
+        authenticate :: Creds master -> Handler (AuthenticationResult master)
+        getAuthId :: Creds master -> Handler (Maybe (AuthId master))
+        authPlugins :: master -> [AuthPlugin master]
+        loginHandler :: HandlerT Auth Handler Html
+        redirectToReferer :: master -> Bool
+        authHttpManager :: master -> Manager
+        maybeAuthId :: Handler (Maybe (AuthId master))
+  \end{minted}
+\end{frame}
+
+\begin{frame}[fragile]{YesodAuth Typeclass instance}
   \begin{minted}{haskell}
-    Person
-        name String
-        age Int Maybe
-        deriving Show
-    Car
-        color String
-        make String
-        model String
-        owner PersonId
-        deriving Show
+    instance YesodAuth App where
+        type AuthId app = Text
+        loginDest _ = HomeR
+        logoutDest _ = HomeR
+        redirectToReferer _ = True
+        authenticate creds = return $ Authenticated $ credsIdent creds
+        authPlugins _ = [authDummy]
+        authHttpManager = error "No manager needed"
   \end{minted}
 \end{frame}
 
-\subsection{Actions}
-\begin{frame}[fragile]{Actions}
-  \begin{minted}[escapeinside=||]{haskell}
-    johnId <- insert $ Person "John Doe" $ Just 35
-    janeId <- insert $ Person "Jane Doe" Nothing
-    |\pause|
-    insert $ BlogPost "My fr1st p0st" johnId
-    insert $ BlogPost "One more for good measure" johnId
-    |\pause|
-    oneJohnPost <- selectList [BlogPostAuthorId ==. johnId] [LimitTo 1]
-    liftIO $ print (oneJohnPost :: [Entity BlogPost])
-    |\pause|
-    john <- get johnId
-    liftIO $ print (john :: Maybe Person)
-    |\pause|
-    update janeId [PersonAge =. Just 33]
-    |\pause|
-    delete janeId
-    deleteWhere [BlogPostAuthorId ==. johnId]
+\subsection{How do requests get routed to the Auth subsytem?}
+\begin{frame}[fragile]{Routing to subsites}
+  The Auth subsystem provides what's known as a subsite, which have
+  their own internal dispatch, but can be included as a component of
+  an application.
+  \pause
+  \begin{minted}[frame=single]{haskell}
+    /auth   AuthR   Auth   getAuth
+  \end{minted}
+  \pause
+  Then we want to tell our Yesod instance where to direct users to login.
+  \begin{minted}[frame=single]{haskell}
+    authRoute _ = Just $ AuthR LoginR
   \end{minted}
 \end{frame}
 
-\subsection{Use with Yesod}
-\begin{frame}[fragile]{Use with Yesod}
-  \begin{minted}[frame=single]{haskell}
-    data App = App                      -- ^ Foundation datatype
-        { ...
-        , appConnPool :: ConnectionPool -- ^ Database connection pool.
-        , ... }
-  \end{minted}
-  \begin{minted}[frame=single]{haskell}
-    instance YesodPersist App where
-        type YesodPersistBackend App = SqlBackend
-        runDB action = do
-            master <- getYesod
-            runSqlPool action $ appConnPool master
-  \end{minted}
-  \begin{minted}[frame=single]{haskell}
-    instance YesodPersistRunner App where
-        getDBRunner = defaultGetDBRunner appConnPool
-  \end{minted}
-\end{frame}
-
-\begin{frame}[fragile]{Use with Yesod}
-  \begin{minted}{haskell}
-    getPostR :: PostId -> Handler Html
-    getPostR = do
-      post <- runDB $ get404 postId
-      defaultLayout $ do
-          setTitle . toHtml $ postTitle post
-          $(widgetFile "post")
-  \end{minted}
+\subsection{Exercise Five}
+\begin{frame}{Exercise Five}
+  In this exercise you'll be starting off with a scaffolded site which
+  has a YesodAuth instance, with the Dummy auth plugin. The task is to
+  add a page that requires being authenticated, and a page that
+  requires being authenticated as a specific user. At least one of
+  these should display the user's AuthId on the page. For here on
+  we're also using a scaffolding with some default styling, and a new
+  menu bar defined with haskell types in Foundation.hs
 \end{frame}
 
 \section{Forms}
-\subsection{Fields}
-\begin{frame}[fragile]{Fields}
-  \begin{minted}{haskell}
-    textField
-    passwordField
-    textareaField
-    hiddenField
-    ...
+\begin{frame}[fragile]{Intro}
+  The yesod-form package gives a framework for building up reusable
+  and composable forms from constituent parts.\\
+  \\
+  \pause
+  In order to use them, this is a required instance implementation:
+  \begin{minted}[frame=single]{haskell}
+    instance RenderMessage App FormMessage where
+        renderMessage _ _ = defaultFormMessage
   \end{minted}
 \end{frame}
 
-\subsection{Creating Applicative Forms}
-\begin{frame}[fragile]{Forms}
-  Can applicatively combine fields into a form.
+\subsection{Fields}
+\begin{frame}[fragile]{Fields}
+  Each field defines a way of parsing input from the user into a
+  Haskell value, and how to create a widget to display the field.
+  \begin{minted}[frame=single]{haskell}
+    textField :: Field Handler Text
+    passwordField :: Field Handler Text
+    textareaField :: Field Handler Textarea
+    hiddenField :: PathPiece p => Field Handler p
+    intField :: Integral i => Field Handler i
+    dayField :: Field Handler Day
+    htmlField :: Field Handler Html
+    emailField :: Field Handler Text
+  \end{minted}
+\end{frame}
+
+\begin{frame}[fragile]{Field Validation}
+  yesod-form provides convenience field transformers to add validation
+  conditions to a field.\\
+  \begin{minted}[frame=single]{haskell}
+    check :: (a -> Either Text a) -> Field Handler a -> Field Handler a
+    checkBool :: (a -> Bool) -> Text -> Field Handler a -> Field Handler a
+    checkM :: (a -> Handler (Either Text a)) ->
+              Field Handler a -> Field Handler a
+  \end{minted}
+\end{frame}
+
+\begin{frame}[fragile]{Field Validation}
+  \begin{minted}[frame=single]{haskell}
+    nameField :: Field Handler Text
+    nameField = check validateName textField
+    -- Bad validation
+    validateName name
+      | (length name) < 4 = Left "Name is too short"
+      | otherwise = Right name
+  \end{minted}
+  \pause
+  \begin{minted}[frame=single]{haskell}
+    -- Bad validation
+    nameField :: Field Handler Text
+    nameField = checkBool ((> 3) . length) errorMessage textField
+    errorMessage = "Name is too short"
+  \end{minted}
+\end{frame}
+
+\subsection{Applicative Forms}
+\begin{frame}{Field to Applicative Form}
+  A field can be converted into an applicative form using either areq
+  or aopt. Both of these functions also take a FieldSettings, to
+  customize the field, as well as a Maybe value, which if isJust,
+  contains an initial value for the field.
+\end{frame}
+
+\begin{frame}[fragile]{Field to Applicative Form}
+  \begin{minted}[frame=single,escapeinside=??]{haskell}
+    areq :: Field Handler a -> FieldSettings -> Maybe a ->
+            AForm Handler a
+    aopt :: Field Handler a -> FieldSettings -> Maybe (Maybe a) ->
+            AForm Handler (Maybe a)
+  \end{minted}
+  \pause
+  \begin{minted}[frame=single,escapeinside=??]{haskell}
+    textForm :: AForm Handler Text
+    textForm = areq textField "text" Nothing
+
+    mtextForm :: AForm Handler (Maybe Text)
+    mtextForm = aopt textField "mtext" Nothing
+  \end{minted}
+  \pause
+  \begin{minted}[frame=single,escapeinside=??]{haskell}
+    defaultTextForm :: Text -> AForm Handler Text
+    defaultTextForm defText = areq textField "text" (Just defText)
+
+    defaultMtextForm :: (Maybe Text) -> AForm Handler (Maybe Text)
+    defaultMtextForm defMtext = aopt textField "mtext" (Just defMtext)
+  \end{minted}
+\end{frame}
+
+\begin{frame}[fragile]{FieldSettings}
+  \begin{minted}[frame=single]{haskell}
+    data FieldSettings = FieldSettings
+             { fsLabel :: Text
+             , fsTooltip :: Maybe Text
+             , fsId :: Maybe Text
+             , fsName :: Maybe Text
+             , fsAttrs :: [(Text, Text)]
+             }
+  \end{minted}
+  \pause
+  Wait a minute, weren't we using a literal string as a FieldSettings? What's going on?
+  \pause
+  \begin{minted}[frame=single]{haskell}
+  instance IsString (FieldSettings a) where
+    fromString s =
+      FieldSettings (fromString s) Nothing Nothing Nothing []
+  \end{minted}
+\end{frame}
+
+\begin{frame}[fragile]{FieldSettings}
+  \begin{minted}[frame=single]{haskell}
+    nameForm :: AForm Handler Text
+    nameForm = areq textField nameFieldSettings Nothing
+      where nameFieldSettings =
+        FieldSettings
+          { fsLabel = "Name"
+          , fsTooltip = Just "Enter your name here"
+          , fsId = Nothing
+          , fsName = Nothing
+          , fsAttrs = [("class", "namefield")]
+          }
+  \end{minted}
+\end{frame}
+
+\begin{frame}[fragile]{Modifying Form's Returned Value}
   \begin{minted}{haskell}
+    sillyForm :: AForm Handler Int
+    sillyForm = ((+) 100) <$> areq intField "Num" Nothing
+  \end{minted}
+  This just demonstrates that you can fmap a function over the value
+  input into the field. This is a little troublesome however, because
+  if you save the value for a default next time, you'll have to make
+  sure to subtract the 100 again so it's not 100 more than what was
+  originally entered.
+\end{frame}
+
+\subsection{Building up}
+\begin{frame}[fragile]{Composing Applicative Forms}
+  \begin{minted}{haskell}
+    data Person = Person
+        { personName    :: Text
+        , personEmail   :: Text
+        , personWebsite :: Maybe Text }
+
+    personForm :: AForm Handler Person
+    personForm = Person
+      <$> areq textField "Name" Nothing
+      <*> areq emailField "Email Address" Nothing
+      <*> aopt textField "Website" Nothing
+  \end{minted}
+\end{frame}
+
+\begin{frame}[fragile]{Non-Input Values}
+  \begin{minted}{haskell}
+    data Post = Post
+        { postTitle    :: Text
+        , postContents :: Textarea
+        , postAuthor   :: UserId
+        , postVal      :: Text
+        , postCreated  :: UTCTime }
+
+    postForm :: UserId -> AForm Handler Post
+    postForm userId = Post
+      <$> areq textField "Title" Nothing
+      <*> areq textareaField "Contents" Nothing
+      <*> pure userId
+      <*> lift (fmap appGetFormVal getYesod)
+      <*> lift (liftIO getCurrentTime)
+  \end{minted}
+\end{frame}
+
+\begin{frame}[fragile]{Rendering Forms}
+  How does the widgets for the fields of a form get composed together?
+  \pause
+  \begin{minted}[frame=single]{haskell}
     type Form a = Html -> MForm Handler (FormResult a, Enctype)
     type FormRender m a = AForm m a -> Form a
 
@@ -1108,89 +1461,13 @@
   \end{minted}
 \end{frame}
 
-\begin{frame}[fragile]{Forms}
-  \begin{minted}{haskell}
-    data Person = Person
-        { personName    :: Text
-        , personEmail   :: Text
-        , personWebsite :: Maybe Text }
-
-    personForm :: Form Person
-    personForm = renderDivs $ Person
-      <$> areq textField "Name" Nothing
-      <*> areq emailField "Email Address" Nothing
-      <*> aopt textField "Website" Nothing
-  \end{minted}
-\end{frame}
-
-\begin{frame}[fragile]{Customize Fields}
-  \begin{minted}{haskell}
-    data Person = Person
-        { personName    :: Text
-        , personEmail   :: Text
-        , personWebsite :: Maybe Text }
-
-    personForm :: Form Person
-    personForm = renderDivs $ Person
-      <$> areq textField nameFieldSettings Nothing
-      <*> areq emailField "Email Address" Nothing
-      <*> aopt textField "Website" Nothing
-        where
-          nameFieldSettings =
-              FieldSettings { fsLabel = "Name"
-                            , fsTooltip = Nothing
-                            , fsId = Nothing
-                            , fsName = Nothing
-                            , fsAttrs = [] }
-  \end{minted}
-\end{frame}
-
-\subsection{Validation}
-\begin{frame}[fragile]{Validate Forms}
-  \begin{minted}{haskell}
-    data Person = Person
-        { personName    :: Text
-        , personEmail   :: Text
-        , personWebsite :: Maybe Text }
-
-    personForm :: Form Person
-    personForm = renderDivs $ Person
-      <$> areq nameField "Name" Nothing
-      <*> areq emailField "Email Address" Nothing
-      <*> aopt textField "Website" Nothing
-        where
-          nameField = check validateName textField
-
-          validateName name
-            | (length name) < 4 = Left "Name is too short"
-            | otherwise = Right name
-  \end{minted}
-\end{frame}
-
-\begin{frame}[fragile]{Validate Forms}
-  \begin{minted}{haskell}
-    data Person = Person
-        { personName    :: Text
-        , personEmail   :: Text
-        , personWebsite :: Maybe Text }
-
-    personForm :: Form Person
-    personForm = renderDivs $ Person
-      <$> areq nameField "Name" Nothing
-      <*> areq emailField "Email Address" Nothing
-      <*> aopt textField "Website" Nothing
-        where
-          errorMessage = "Name is too short"
-          nameField = checkBool ((> 3) . length) errorMessage textField
-  \end{minted}
-\end{frame}
-
-\begin{frame}[fragile]{Forms}
+\begin{frame}[fragile]{How forms usually look}
   \begin{minted}{haskell}
     data Post = Post
         { postTitle    :: Text
         , postContents :: Textarea
         , postAuthor   :: UserId
+        , postVal      :: Text
         , postCreated  :: UTCTime }
 
     postForm :: UserId -> Form Post
@@ -1198,6 +1475,7 @@
       <$> areq textField "Title" Nothing
       <*> areq textareaField "Contents" Nothing
       <*> pure userId
+      <*> lift (fmap appGetFormVal getYesod)
       <*> lift (liftIO getCurrentTime)
   \end{minted}
 \end{frame}
@@ -1218,7 +1496,7 @@
 \end{frame}
 
 \begin{frame}[fragile]{Example}
-  \begin{minted}{haskell}
+  \begin{minted}[frame=single]{haskell}
     postNewPostR :: Handler Html
     postNewPostR = do
       user <- requireAuthId
@@ -1268,52 +1546,393 @@
   \end{minted}
 \end{frame}
 
-\subsection{Other Types of Forms}
+\subsection{Final Notes}
+\begin{frame}[fragile]{Multiple Forms}
+  Sometimes you'd like to have a single handler be able to run
+  multiple forms, while identifying which form was submitted. The form
+  transformer ``identifyForm'' is used to add a hidden form onto an
+  existing form in order to identify it.\\
+  \begin{minted}[frame=single]{haskell}
+    ((fooRes, fooWidget), fooEnctype) <- runFormPost fooForm
+    ((barRes, barWidget), barEnctype) <- runFormPost barForm
+  \end{minted}
+  Becomes:\\
+  \begin{minted}[frame=single]{haskell}
+    ((fooRes, fooWidget), fooEnctype) <-
+        runFormPost $ identifyForm "foo" fooForm
+    ((barRes, barWidget), barEnctype) <-
+        runFormPost $ identifyForm "bar" barForm
+  \end{minted}
+\end{frame}
+
 \begin{frame}{Other Types of Forms}
-  Monadic Forms\\
-  Input Forms\\
+  There are two other types of forms available, monadic forms and
+  input forms. Monadic forms have you create the final monadic form
+  yourself, instead of having a FormRender function create it from an
+  applicative form. Input forms basically are the same as applicative
+  forms, but throw away the builtin widgets, and receive input from a
+  form constructed elsewhere (in javascript, or in manual Html that
+  was pre-existing).
 \end{frame}
 
-\section{Esqueleto}
-\begin{frame}{Esqueleto}
-  Type-safe EDSL for SQL queries on persistent backends\\
-  Most common case that brings need for Esqueleto is handling SQL joins\\
+\subsection{Exercise Six}
+\begin{frame}{Exercise Six}
+  For this exercise, you'll create a page with a form that creates a
+  Post value containing title, author, and content fields. The author
+  will be filled in from the auth value (we'll still be using dummy
+  auth), so the page with the form will need to require auth. On a
+  successful post of the form, a page without the form should be
+  displayed, containing the content from the form.
 \end{frame}
 
-\section{TypedContent}
+\begin{frame}{What next?}
+  We'd sure like somewhere to put the data from these forms...
+\end{frame}
 
-\begin{frame}{TypedContent}
+\section{Persistence}
+\begin{frame}{Features}
+  Persistent is a Haskell library for handling data storage interactions.
   \begin{itemize}
-  \item Represents some raw content and a mime type.
-  \item Allows returned content type to be determined based on the
-    accepted headers of request.
+  \item<1-> Not restricted to Yesod, general purpose.
+  \item<2-> Database agnostic, Support for PostgreSQL, SQLite, MySQL, and MongoDB.
+  \item<3-> Handles marshalling of Haskell datatypes into the storage layer.
+  \item<4-> Type safe, concise, declarative syntax.
+  \item<5-> Automatic database migration system.
   \end{itemize}
 \end{frame}
 
-\begin{frame}[fragile]{TypedContent}
-  \begin{minted}{haskell}
-    getHomeR :: Handler TypedContent
-    getHomeR = selectRep $ do
-        provideRep $ return
-            [shamlet|
-                <p>Hello, my name is #{name} and I am #{age} years old.
-            |]
-        provideRep $ return $ object
-            [ "name" .= name
-            , "age" .= age ]
-      where
-        name = "Michael" :: Text
-        age = 28 :: Int
+\begin{frame}[fragile]{Data Definition Differences}
+  \begin{minted}[frame=single]{haskell}
+    data Person = Person
+        { personName :: Text
+        , personAge  :: Int
+        }
+  \end{minted}
+  \pause
+  \begin{minted}[frame=single]{SQL}
+    CREATE TABLE person(id SERIAL PRIMARY KEY,
+                        name VARCHAR NOT NULL,
+                        age INTEGER);
   \end{minted}
 \end{frame}
 
-\begin{frame}[fragile]{JSON}
-  Recommended to use Aeson\\
-  Simple object creation:
-  \begin{minted}[frame=single]{haskell}
-    object [ "key1" .= "val1", "key2" .= "val2" ]
+\subsection{Entity Definition DSL}
+\begin{frame}[fragile]{Entity Definition DSL}
+  \begin{minted}{haskell}
+    Person
+        name String
+        age Int
+        deriving Show
   \end{minted}
 \end{frame}
+
+\begin{frame}[fragile]{Generated Code}
+  \begin{minted}{haskell}
+    data Person = Person
+      { personName :: !String
+      , personAge :: !Int
+      }
+    deriving Show
+
+    type PersonId = Key Person
+
+    instance PersistEntity Person where
+        newtype Key Person = PersonKey (BackendKey SqlBackend)
+            deriving (PersistField, Show, Eq, Read, Ord)
+        -- A GADT allows fields to be matched with their datatypes.
+        data EntityField Person typ where
+            PersonId   :: EntityField Person PersonId
+            PersonName :: EntityField Person String
+            PersonAge  :: EntityField Person Int
+
+        data Unique Person
+        type PersistEntityBackend Person = SqlBackend
+        -- ...
+  \end{minted}
+\end{frame}
+
+\subsection{Actions}
+\begin{frame}[fragile]{Extended Entities for Examples}
+  \begin{minted}{haskell}
+    Person
+        name String
+        age Int Maybe
+        deriving Show
+    BlogPost
+        title String
+        authorId PersonId
+        deriving Show
+  \end{minted}
+\end{frame}
+
+\begin{frame}[fragile]{Actions}
+  \begin{minted}[escapeinside=||]{haskell}
+    johnId <- insert $ Person "John Doe" $ Just 35
+    janeId <- insert $ Person "Jane Doe" Nothing
+    |\pause|
+    insert $ BlogPost "My fr1st p0st" johnId
+    insert $ BlogPost "One more for good measure" johnId
+    |\pause|
+    oneJohnPost <- selectList [BlogPostAuthorId ==. johnId] [LimitTo 1]
+    liftIO $ print (oneJohnPost :: [Entity BlogPost])
+    |\pause|
+    john <- get johnId
+    liftIO $ print (john :: Maybe Person)
+    |\pause|
+    update janeId [PersonAge =. Just 33]
+    |\pause|
+    delete janeId
+    deleteWhere [BlogPostAuthorId ==. johnId]
+  \end{minted}
+\end{frame}
+
+\begin{frame}[fragile]{More About Selects}
+  \begin{minted}[frame=single]{haskell}
+    Person
+        firstName String
+        lastName  String
+        age       Int
+  \end{minted}
+  \pause
+  \begin{minted}[frame=single]{haskell}
+    people <- selectList [ PersonAge >. 25, PersonAge <=. 30 ] []
+    people <- selectList (    [ PersonAge >=. 25, PersonAge <=. 30 ]
+                          ||. [ PersonAge >. 35,  PersonAge <. 40 ] ) []
+    people <- selectList [ PersonFirstName ==. "Gavin" ] []
+    people <- selectList [ PersonFirstName <-. ["Gavin", "Alex"]] []
+    people <- selectList [ PersonFirstName /<-. ["James", "Albert"]] []
+
+    personEntity <- selectFirst [ PersonFirstName ==. "Gavin" ]
+    case personEntity of
+      Nothing -> undefined
+      Just (Entity personId person) -> undefined
+  \end{minted}
+\end{frame}
+
+\begin{frame}[fragile]{Sorting, Limits, and Offsets}
+  \begin{minted}{haskell}
+    resultsForPage pageNumber = do
+      let resultsPerPage = 10
+      selectList
+          [ PersonAge >=. 18 ]
+          [ Desc PersonAge
+          , Asc PersonLastName
+          , Asc PersonFirstName
+          , LimitTo resultsPerPage
+          , OffsetBy $ (pageNumber - 1) * resultsPerPage ]
+  \end{minted}
+\end{frame}
+
+\begin{frame}[fragile]{Updating Records}
+  \begin{minted}{haskell}
+    personId <- insert $ Person "Gavin" "Whelan" 21
+    update personId [ PersonAge =. 22 ]
+    update personId [ PersonAge +=. 1 ]
+    updateWhere [PersonFirstName ==. Gavin] [ PersonAge -=. 1 ]
+    replace personId $ Person "John" "Doe" 27
+  \end{minted}
+\end{frame}
+
+\begin{frame}[fragile]{Deleting Records}
+  \begin{minted}{haskell}
+    personId <- insert $ Person "Gavin" "Whelan" 21
+    delete personId
+    deleteWhere [ PersonFirstName ==. "Gavin" ]
+    deleteWhere ([] :: [Filter Person])
+  \end{minted}
+\end{frame}
+
+\begin{frame}[fragile]{Uniqueness Constraints}
+  \begin{minted}[frame=single]{haskell}
+    Person
+        firstName String
+        lastName String
+        age Int
+        PersonName firstName lastName
+        deriving Show
+  \end{minted}
+  \pause
+  \begin{minted}[frame=single]{haskell}
+    insert_ $ Person "Gavin" "Whelan" 1
+    gavin <- getBy $ PersonName "Gavin" "Whelan"
+    liftIO $ print gavin
+    deleteBy $ PersonName "Gavin" "Whelan"
+  \end{minted}
+\end{frame}
+
+\begin{frame}[fragile]{Relationships}
+  \begin{minted}[frame=single]{haskell}
+    Person
+      name String
+    Store
+        name String
+    PersonStore
+        personId PersonId
+        storeId StoreId
+        UniquePersonStore personId storeId
+  \end{minted}
+  \pause
+  \begin{minted}[frame=single]{haskell}
+    bruce <- insert $ Person "Bruce Wayne"
+    michael <- insert $ Person "Michael"
+
+    target <- insert $ Store "Target"
+    gucci <- insert $ Store "Gucci"
+    sevenEleven <- insert $ Store "7-11"
+
+    insert $ PersonStore bruce gucci
+    insert $ PersonStore bruce sevenEleven
+    insert $ PersonStore michael target
+    insert $ PersonStore michael sevenEleven
+  \end{minted}
+\end{frame}
+
+\subsection{Connecting to Yesod}
+\begin{frame}[fragile]{How Entity Definitions Are Loaded}
+  config/models:
+  \begin{minted}[frame=single]{haskell}
+    Person
+        firstName String
+        lastName String
+        age Int
+        PersonName firstName lastName
+        deriving Show
+  \end{minted}
+  Model.hs:
+  \begin{minted}[frame=single]{haskell}
+    share [mkPersist sqlSettings, mkMigrate "migrateAll"]
+        $(persistFileWith lowerCaseSettings "config/models")
+  \end{minted}
+\end{frame}
+
+\begin{frame}[fragile]{Adding Instances}
+  Foundation.hs:
+  \begin{minted}[frame=single]{haskell}
+    data App = App
+        { appSettings    :: AppSettings
+        , appConnPool    :: ConnectionPool -- ^ Database connection pool.
+        , appLogger      :: Logger
+        }
+  \end{minted}
+  \pause
+  \begin{minted}[frame=single]{haskell}
+    -- How to run database actions.
+    instance YesodPersist App where
+        type YesodPersistBackend App = SqlBackend
+        runDB action = do
+            master <- getYesod
+            runSqlPool action $ appConnPool master
+  \end{minted}
+  \pause
+  \begin{minted}[frame=single]{haskell}
+    instance YesodPersistRunner App where
+        getDBRunner = defaultGetDBRunner appConnPool
+  \end{minted}
+\end{frame}
+
+\begin{frame}[fragile]{Database Connection}
+  config/settings.yml:
+  \begin{minted}[frame=single]{yaml}
+    database:
+      user:     "_env:PGUSER:lambdaconf"
+      password: "_env:PGPASS:'2017'"
+      host:     "_env:PGHOST:localhost"
+      port:     "_env:PGPORT:5432"
+      database: "_env:PGDATABASE:lambdaconf"
+      poolsize: "_env:PGPOOLSIZE:10"
+  \end{minted}
+  makeFoundation, Application.hs:
+  \begin{minted}[frame=single]{haskell}
+    -- Create the database connection pool
+    pool <- flip runLoggingT logFunc $ createPostgresqlPool
+        (pgConnStr  $ appDatabaseConf appSettings)
+        (pgPoolSize $ appDatabaseConf appSettings)
+
+    -- Perform database migration using our application's logging settings.
+    runLoggingT (runSqlPool (runMigration migrateAll) pool) logFunc
+  \end{minted}
+\end{frame}
+
+\begin{frame}[fragile]{Using Persistent in Handlers}
+  \begin{minted}[frame=single]{haskell}
+    / HomeR GET
+    /person/#PersonId PersonR GET
+  \end{minted}
+  \begin{minted}[frame=single]{haskell}
+    getPersonR :: PersonId -> Handler Html
+    getPersonR personId = do
+        person <- runDB $ get404 personId
+        defaultLayout $
+          [whamlet|
+            <p>#{personFirstName person}
+               #{personLastName person}
+               is #{personAge person}
+          |]
+  \end{minted}
+\end{frame}
+
+\begin{frame}[fragile]{Generating Listings}
+  \begin{minted}{haskell}
+    -- List all people in the database
+    getHomeR :: Handler Html
+    getHomeR = do
+      people <- runDB $ selectList [] [Asc PersonAge]
+      defaultLayout $
+        [whamlet|
+          <ul>
+            $forall Entity personid person <- people
+              <li>
+                <a href=@{PersonR personid}>#{personFirstName person}
+        |]
+  \end{minted}
+\end{frame}
+
+\subsection{Exercise Seven}
+\begin{frame}{Exercise Seven}
+  For this exercise, we'll be finally doing something that is starting
+  to look like a blog. You'll be starting with the form from the last
+  exercise, but you'll create a post entity with title, author, and
+  content fields instead of a haskell datatype. Then, instead of just
+  displaying the posted data, you'll insert it in the database. You'll
+  also need a handler to display an individual post, and the home page
+  will give a listing with each entry providing a link to the
+  individual post.
+\end{frame}
+
+%% \section{TypedContent}
+%% 
+%% \begin{frame}{TypedContent}
+%%   \begin{itemize}
+%%   \item Represents some raw content and a mime type.
+%%   \item Allows returned content type to be determined based on the
+%%     accepted headers of request.
+%%   \end{itemize}
+%% \end{frame}
+%% 
+%% \begin{frame}[fragile]{TypedContent}
+%%   \begin{minted}{haskell}
+%%     getHomeR :: Handler TypedContent
+%%     getHomeR = selectRep $ do
+%%         provideRep $ return
+%%             [shamlet|
+%%                 <p>Hello, my name is #{name} and I am #{age} years old.
+%%             |]
+%%         provideRep $ return $ object
+%%             [ "name" .= name
+%%             , "age" .= age ]
+%%       where
+%%         name = "Michael" :: Text
+%%         age = 28 :: Int
+%%   \end{minted}
+%% \end{frame}
+%% 
+%% \begin{frame}[fragile]{JSON}
+%%   Recommended to use Aeson\\
+%%   Simple object creation:
+%%   \begin{minted}[frame=single]{haskell}
+%%     object [ "key1" .= "val1", "key2" .= "val2" ]
+%%   \end{minted}
+%% \end{frame}
 
 \begin{frame}[fragile]{Starting a Yesod Project IRL}
   Available templates:
