@@ -91,39 +91,6 @@
 \end{frame}
 
 \section{Basic Background}
-
-\subsection{Why Yesod?}
-\begin{frame}{Why Yesod?}
-  \begin{itemize}
-  \item<1-> Plays to the strengths of Haskell
-    \begin{itemize}
-    \item Well defined types to prevent unsafe data use
-    \item Referential transparency preventing unintended side effects
-    \end{itemize}
-  \item<2-> Saves typing
-    \begin{itemize}
-    \item Forms leverage Applicatives to reduce boilerplate
-    \item Terse DSLs for route definitions and database entities
-    \item Code generation to write correct and consistent code for you
-    \end{itemize}
-  \item<3-> Performant
-    \begin{itemize}
-    \item Templating approaches allow HTML, CSS, and Javascript to be
-      optimized at compile time, by GHC
-    \item Advanced underlying technologies such as conduits and
-      builders allow code to run in constant memory
-    \item Flagship web server Warp is highly scalable, using
-      lightweight user threads running on multiple processes,
-      receiving IO events with epoll (or kqueue)
-    \end{itemize}
-  \item<4-> Modular
-    \begin{itemize}
-    \item Many general purpose packages have spun off of Yesod and can
-      be used independently
-    \end{itemize}
-  \end{itemize}
-\end{frame}
-
 \subsection{Language Extensions}
 \begin{frame}[fragile]{Overloaded Strings}
   \begin{minted}[frame=single]{haskell}
@@ -685,35 +652,27 @@
 \end{frame}
 
 \subsection{Handler Monad}
-\begin{frame}[fragile]{Handler Monad}
-  \begin{minted}{haskell}
+\begin{frame}[fragile]{HandlerT}
+  \begin{minted}[escapeinside=||]{haskell}
     getHomeR :: Handler Html
-
+    |\pause|
     type Handler a = HandlerT site IO a
-
+    |\pause|
+    type Handler a = HandlerT Task IO a
+    |\pause|
     getHomeR :: HandlerT Task IO Html
-  \end{minted}
-\end{frame}
-
-\begin{frame}[fragile]{Handler Monad}
-  \begin{minted}{haskell}
-    getPersonR :: Text -> Handler Html
-    getPersonR name = do
-        let reversedName = Data.Text.reverse name
-        defaultLayout $
-            [whamlet|
-                <p> Name is: #{name}
-                <p> Name reversed is: #{reversedName}
   \end{minted}
 \end{frame}
 
 \begin{frame}[fragile]{Some functions in the Handler Monad}
   \begin{minted}{haskell}
     -- | Returns the application's foundation value
-    getYesod :: Handler App
-    -- | returns a new identifier
-    newIdent :: Handler Text
-    -- | Redirect status 303
+    getYesod :: HandlerT site IO site :: Handler Task
+    -- | Returns request data for full access to parameters, cookies, etc.
+    getRequest :: Handler YesodRequest
+    -- | Set the cookie on the client
+    setCookie :: SetCookie -> Handler ()
+    -- | 303 Redirect
     redirect :: Route App -> Handler a
     -- | 404 Error
     notFound :: Handler a
@@ -723,6 +682,30 @@
     notAuthenticated :: Handler a
     -- | 403 Permission Denied
     permissionDenied :: Handler a
+    -- | returns a new identifier
+    newIdent :: Handler Text
+  \end{minted}
+\end{frame}
+
+\begin{frame}[fragile]{MonadHandler}
+  newIdent :: Handler Text? I thought that was in the Widget monad?
+  \pause
+  \begin{minted}[frame=single]{haskell}
+    newIdent :: MonadHandler m => m Text
+  \end{minted}
+\end{frame}
+
+\begin{frame}[fragile]{Contrived Example}
+  \begin{minted}{haskell}
+    getPersonR :: Text -> Handler Html
+    getPersonR "Gavin" = redirect $ PersonR "nivaG"
+    getPersonR "Joseph" = permissionDenied
+    getPersonR name = do
+        let reversedName = Data.Text.reverse name
+        defaultLayout $
+            [whamlet|
+                <p> Name is: #{name}
+                <p> Name reversed is: #{reversedName}
   \end{minted}
 \end{frame}
 
@@ -820,40 +803,48 @@
 
 \section{Industrial Structure}
 \subsection{Breaking up the code}
-\begin{frame}[fragile]{Logically splitting up the Application}
+\begin{frame}{Logically splitting up the Application}
   One issue with how we've been doing things so far, is that that if
   we keep putting everything in the same file, with lots of
-  Quasi-Quotes all around, things become really ugly and unmaintainable.
+  Quasi-Quotes all around, things become really ugly and unmaintainable.\\
+  \\
+  We'd like to put handlers in seperate files from the rest of the
+  application, and put handlers that are logically distinct in
+  different files from each other.
+\end{frame}
 
+\begin{frame}[fragile]{Circular Dependency}
+  Handlers needs the applications Route datatype.
   \begin{minted}[frame=single]{haskell}
     getHomeR :: Handler Html
     getHomeR = defaultLayout $ do
              setTitle "Welcome Home"
-             [whamlet|<h1>Welcome Back!|]
+             [whamlet|<h1><a href=@{HomeR}>Welcome Back!</a>|]
   \end{minted}
-
-  Handlers need our Route definitions.
-
+  \pause
+  Yet mkYesod needs our handlers to define dispatch over the routes.
   \begin{minted}[frame=single]{haskell}
     mkYesod "Task" [parseRoutes|
     /      HomeR  GET
     |]
   \end{minted}
-  Yet mkYesod needs our Handlers to define dispatch over routes.
 \end{frame}
 
 \begin{frame}[fragile]{Splitting mkYesod}
+  The solution is to split up the mkYesod TH function.\\
+  \pause
   \begin{minted}[frame=single]{haskell}
     mkYesodData "Task" [parseRoutes|
     /      HomeR GET
     |]
   \end{minted}
-  This generates the route data type and the rendering functions, but
-  doesn't define dispatch.
+  mkYesodData generates the route data type and the rendering
+  functions, but doesn't define dispatch.\\
+  \pause
   \begin{minted}[frame=single]{haskell}
     mkYesodDispatch "Task" resourcesTask
   \end{minted}
-  This generates the actual dispatch code.
+  mkYesodDispatch generates the actual dispatch implementation.
 \end{frame}
 
 \begin{frame}[fragile]{Getting rid of Quasi-Quoters}
@@ -862,8 +853,10 @@
     /      HomeR GET
     |]
   \end{minted}
-  Instead of using Quasi-Quoters we want to put them into external
-  files.
+  When we start adding a lot of pages to the application this becomes
+  unwieldy, so instead of using Quasi-Quoters we would like to put our
+  route definitions into an external file.\\
+  \pause
   \begin{minted}[frame=single]{haskell}
     mkYesodData "Task" $(parseRoutesFile "routes")
   \end{minted}
@@ -875,11 +868,14 @@
         defaultLayout $
             toWidget [hamlet|<p>This is the content!|]
   \end{minted}
-  Instead of using Quasi-Quoters we want to put them into external
-  files.
+  Similarly, when we write pages more than a line long, we'd want them
+  in external files as well.\\
+  \pause
   \begin{minted}[frame=single]{haskell}
     getHomeR = defaultLayout $ toWidget $(hamletFile "home.hamlet")
   \end{minted}
+  \pause
+  Similarly, there are luciusFile and juliusFile TH functions.
 \end{frame}
 
 \subsection{Scaffolding Structure}
@@ -971,7 +967,7 @@
 
 \subsection{Changing Default Behaivor}
 \begin{frame}{defaultLayout?}
-  What was that defaultLayout thing?
+  What's the defaultLayout function we use in all our handlers?
 \end{frame}
 
 \begin{frame}[fragile]{Yesod Typeclass}
@@ -995,16 +991,19 @@
 
 \begin{frame}[fragile]{defaultLayout}
   \begin{minted}{haskell}
-    defaultLayout widget = do
-      master <- getYesod
-      mmsg <- getMessage
+    instance Yesod App where
+      -- ...
+      defaultLayout widget = do
+        master <- getYesod
+        mmsg <- getMessage
 
-      -- We break up the default layout into two components:
-      -- default-layout is the contents of the body tag, and
-      -- default-layout-wrapper is the entire page.
-      pc <- widgetToPageContent $(widgetFile "default-layout")
-      withUrlRenderer
+        -- We break up the default layout into two components:
+        -- default-layout is the contents of the body tag, and
+        -- default-layout-wrapper is the entire page.
+        pc <- widgetToPageContent $(widgetFile "default-layout")
+        withUrlRenderer
         $(hamletFile "templates/default-layout-wrapper.hamlet")
+      -- ...
   \end{minted}
 \end{frame}
 
@@ -1031,9 +1030,8 @@
 \begin{frame}[fragile]{widgetFile?}
   This is a nice scaffolding feature that allows you to load a
   collection of files together as a widget.\\
-  \\
-  For example:\\
-  \\
+  \pause
+  \\For example:
   \begin{minted}[frame=single]{haskell}
     $(widgetFile "homepage")
   \end{minted}
@@ -1084,11 +1082,14 @@
   the cookies. \\
 
   \begin{minted}[frame=single]{haskell}
-    -- Store session data on the client in encrypted cookies,
-    -- default session idle timeout is 120 minutes
-    makeSessionBackend _ = Just <$> defaultClientSessionBackend
-        120    -- timeout in minutes
-        "config/client_session_key.aes"
+    instance Yesod App where
+      -- ...
+      -- Store session data on the client in encrypted cookies,
+      -- default session idle timeout is 120 minutes
+      makeSessionBackend _ = Just <$> defaultClientSessionBackend
+          120    -- timeout in minutes
+          "config/client_session_key.aes"
+      -- ...
   \end{minted}
 \end{frame}
 
@@ -1151,8 +1152,8 @@
 \subsection{Exercise Four}
 \begin{frame}[fragile]{Exercise Four}
   In this exercise you'll start using the scaffolding. The task will
-  be to add a new page that simply sets the a message in the session
-  and redirect to the homepage. Then I'd like you to edit the
+  be to add a new page that simply sets the message in the session and
+  redirects to the homepage. Then I'd like you to edit the
   default-layout.hamlet file (or if you'd rather add a
   default-layout.lucius file) and add some form of change or styling
   to how pages are displayed. Also add some message to the copyright
