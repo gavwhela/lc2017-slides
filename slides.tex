@@ -1153,8 +1153,9 @@
 \begin{frame}[fragile]{Exercise Four}
   In this exercise you'll start using the scaffolding. The task will
   be to add a new page that simply sets the message in the session and
-  redirects to the homepage. Then I'd like you to edit the
-  default-layout.hamlet file (or if you'd rather add a
+  redirects to the homepage, but the handler for this page should be
+  put in a new module in the Handler folder. Then I'd like you to edit
+  the default-layout.hamlet file (or if you'd rather add a
   default-layout.lucius file) and add some form of change or styling
   to how pages are displayed. Also add some message to the copyright
   field of the config/setting.yml.
@@ -1162,6 +1163,17 @@
 
 \section{Authentication and Authorization}
 \subsection{isAuthorized}
+\begin{frame}[fragile]{isAuthorized}
+  \begin{minted}{haskell}
+    instance Yesod App where
+      -- ...
+      -- | Determine if a request is authorized or not.
+      isAuthorized :: Route site -> Bool -> Handler AuthResult
+      isAuthorized _ _ = return Authorized
+      -- ...
+  \end{minted}
+\end{frame}
+
 \begin{frame}[fragile]{isAuthorized}
   \begin{minted}{haskell}
     isAuthorized :: Route site -> Bool -> Handler AuthResult
@@ -1180,7 +1192,7 @@
     isAdmin :: Handler AuthResult
     isAdmin = do
         muid <- maybeAuthId
-        case muid of
+        return $ case muid of
           Nothing -> AuthenticationRequired
           Just "gavwhela@gmail.com" -> Authorized
           Just _ -> Unauthorized "Admin only page"
@@ -1219,7 +1231,6 @@
 \begin{frame}[fragile]{YesodAuth Typeclass}
   Minimal complete definition: loginDest, logoutDest,
   (authenticate$|$getAuthId), authPlugins, authHttpManager \\
-  \\
   \begin{minted}[frame=single]{haskell}
     class (Yesod master) => YesodAuth master where
         type AuthId master
@@ -1269,11 +1280,12 @@
 \begin{frame}{Exercise Five}
   In this exercise you'll be starting off with a scaffolded site which
   has a YesodAuth instance, with the Dummy auth plugin. The task is to
-  add a page that requires being authenticated, and a page that
-  requires being authenticated as a specific user. At least one of
-  these should display the user's AuthId on the page. For here on
-  we're also using a scaffolding with some default styling, and a new
-  menu bar defined with haskell types in Foundation.hs
+  add a page that requires being authenticated, that displays the
+  user's AuthId on the page, as well as a page that requires being
+  authenticated as a specific user. For here on we're also using a
+  scaffolding with some default styling, and a new menu bar defined
+  with haskell types in Foundation.hs, which you can add your pages
+  to.
 \end{frame}
 
 \section{Forms}
@@ -1403,7 +1415,7 @@
 \end{frame}
 
 \begin{frame}[fragile]{Modifying Form's Returned Value}
-  \begin{minted}{haskell}
+  \begin{minted}[frame=single]{haskell}
     sillyForm :: AForm Handler Int
     sillyForm = ((+) 100) <$> areq intField "Num" Nothing
   \end{minted}
